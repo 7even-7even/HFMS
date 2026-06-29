@@ -1,39 +1,64 @@
-# 🏥 Hospital Food Management System 🍱
+# Hospital Food Management System (HFMS) - Production MVP
 
-A modern full-stack web application designed to simplify **food ordering for hospital patients** based on their **customized diet plans**.  
-This system ensures patients receive the right meals aligned with their medical and dietary needs.
+The **Hospital Food Management System (HFMS)** is a comprehensive, production-ready full-stack web application designed to streamline food ordering, dietary management, inventory tracking, and meal delivery operations inside a hospital environment.
 
----
+## Key Features & Capabilities
 
-## 💻 Tech Stack
-
-| Layer        | Technology                     |
-|--------------|--------------------------------|
-| **Frontend** | React + Vite                   |
-| **Backend**  | Node.js + Express.js           |
-| **Database** | MongoDB                        |
-| **Styling**  | CSS, Bootstrap                 |
-| **Tools**    | ESLint, Babel, Postman         |
-| **Versioning** | Git & GitHub                 |
+- **Role-Based Workflows:** Full support for 5 specialized system roles: `Administrator`, `Doctor/Dietician`, `Patient`, `Inventory/Pantry Manager`, and `Delivery Partner`.
+- **Allergy & Medical Restriction Engine:** Automated pre-order verification checks customized food requests against patient allergies, medical restrictions, and doctor-prescribed limitations.
+- **AI/Rule-Based Food Recommendation Engine:** Smart meal suggestions tailored to disease type, recovery stage, age group, and nutritional targets.
+- **QR-Based & OTP Meal Verification:** Ensures 100% zero-error meal delivery by matching Patient ID, Order ID, and Diet Plan ID at the bedside.
+- **Real-Time Synchronicity:** Integrated Socket.IO for sub-second updates on meal preparation status, real-time live delivery tracking, low-stock alerts, and secure Doctor-Patient messaging.
+- **HIPAA-Ready Auditing:** Comprehensive audit logging tracking all diet plan modifications, order updates, payment actions, and inventory changes.
 
 ---
 
-## 🔥 Features
+## Getting Started
 
-- 🥗 **Diet-Based Food Ordering**: Patients or staff can select meals according to predefined diet plans (diabetic, protein-rich, low-sodium, etc.)
-- 📋 **Admin Dashboard**: Easily manage meals, diet plans, and food inventory.
-- 👤 **User Roles**: Different access levels for Patients, Nutritionists, and Admins.
-- 🕓 **Order Scheduling**: Patients can schedule meal delivery for breakfast, lunch, and dinner.
-- 📱 **Responsive Design**: Fully optimized for desktop and mobile devices.
-- 🛡️ **Secure Authentication**: Login system with JWT-based auth.
+The project is structured as a robust monorepo consisting of a Node.js/Express TypeScript backend and a React/Vite TypeScript frontend.
+
+### Prerequisites
+- Node.js (v20+ recommended)
+- MongoDB (Running locally or MongoDB Atlas)
+
+### Quick Start (Development Mode)
+
+1. **Install all dependencies:**
+   ```bash
+   npm run install:all
+   ```
+
+2. **Seed the database with sample production demo data:**
+   ```bash
+   npm run seed
+   ```
+   *This automatically creates pre-configured accounts for all roles (Admin, Doctor, Dietician, Patient, Pantry, Delivery), alongside hospital food items, initial inventory stock, active diet plans, and sample orders.*
+
+3. **Start both Backend and Frontend concurrently:**
+   ```bash
+   npm run dev
+   ```
+
+- **Frontend Application:** Available at `http://localhost:5173`
+- **Backend API & Socket Server:** Available at `http://localhost:5000`
 
 ---
 
-## 🚀 Project Setup
+## Demo System Login Accounts
 
-### 1. Clone the Repository
+Use the following credentials to explore the specialized dashboards and workflows:
 
-```bash
-git clone https://github.com/your-username/hospital-food-management.git
-cd hospital-food-management
+| Role | Email | Password | Key Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@hfms.org` | `password123` | Dashboard analytics, staff status, manage users, audit logs, menu catalog |
+| **Doctor** | `doctor@hfms.org` | `password123` | Create/assign diet plans, monitor nutritional compliance, chat with patients |
+| **Dietician** | `dietician@hfms.org` | `password123` | Modify diet plans, approve/reject custom food requests, patient messaging |
+| **Patient** | `patient@hfms.org` | `password123` | View diet plan, browse catalog, get food recommendations, track live orders, chat |
+| **Pantry Manager**| `pantry@hfms.org` | `password123` | Manage inventory stock, process orders, update prep status, daily prep reports |
+| **Delivery Partner**|`delivery@hfms.org` | `password123` | View assigned deliveries, live update status, verify via QR/OTP, history |
 
+---
+
+## Documentation
+
+For an in-depth review of the system design, architectural diagrams, complete database schema, API specifications, and scalability strategies, please refer to [ARCHITECTURE.md](./ARCHITECTURE.md).
