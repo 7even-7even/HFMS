@@ -42,22 +42,7 @@ The project is structured as a robust monorepo consisting of a Node.js/Express T
 - **Frontend Application:** Available at `http://localhost:5173`
 - **Backend API & Socket Server:** Available at `http://localhost:5000`
 
----
 
-## Demo System Login Accounts
-
-Use the following credentials to explore the specialized dashboards and workflows:
-
-| Role | Email | Password | Key Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Administrator** | `admin@hfms.org` | `password123` | Dashboard analytics, staff status, manage users, audit logs, menu catalog |
-| **Doctor** | `doctor@hfms.org` | `password123` | Create/assign diet plans, monitor nutritional compliance, chat with patients |
-| **Dietician** | `dietician@hfms.org` | `password123` | Modify diet plans, approve/reject custom food requests, patient messaging |
-| **Patient** | `patient@hfms.org` | `password123` | View diet plan, browse catalog, get food recommendations, track live orders, chat |
-| **Pantry Manager**| `pantry@hfms.org` | `password123` | Manage inventory stock, process orders, update prep status, daily prep reports |
-| **Delivery Partner**|`delivery@hfms.org` | `password123` | View assigned deliveries, live update status, verify via QR/OTP, history |
-
----
 
 ## Documentation
 
