@@ -3,8 +3,9 @@ node_modules
 .DS_Store
 apps/api/dev.db
 apps/api/dev.db-journal
+apps/api/prisma/dev.db
+apps/api/prisma/dev.db-journal
 apps/api/uploads
 apps/web/dist
 coverage
 *.log
-*.db

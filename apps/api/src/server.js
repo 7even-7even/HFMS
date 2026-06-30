@@ -3,7 +3,7 @@ const { prisma } = require('./config/prisma');
 const { env } = require('./config/env');
 
 const server = app.listen(env.PORT, () => {
-  console.log(`HFMS API listening on http://localhost:${env.PORT}`);
+  console.log(`Cure Cafe API listening on http://localhost:${env.PORT}`);
 });
 
 async function shutdown(signal) {

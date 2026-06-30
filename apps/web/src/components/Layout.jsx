@@ -1,9 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bell, ClipboardList, CreditCard, LayoutDashboard, LogOut, Package, Pill, Salad, Truck, Users, Utensils, BarChart3, MessageSquare, UserCog } from 'lucide-react';
+import { Bell, CreditCard, LayoutDashboard, LogOut, Package, Pill, Salad, Truck, Users, Utensils, BarChart3, MessageSquare, UserCog } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
 import { api, useNotificationsQuery } from '../services/api';
 import { ROLES, roleLabel } from '../utils/format';
+import BrandLogo from './BrandLogo';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: Object.values(ROLES), end: true },
@@ -36,49 +37,46 @@ export default function Layout() {
   const visible = nav.filter((item) => user && item.roles.includes(user.role));
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-slate-200 bg-white p-5 lg:block">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-600 text-lg font-bold text-white">HF</div>
-          <div>
-            <p className="text-lg font-black text-slate-900">HFMS</p>
-            <p className="text-xs text-slate-500">Hospital Food Ops</p>
-          </div>
+    <div className="min-h-screen">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 overflow-hidden border-r border-white/10 bg-slate-950 p-5 text-white lg:block">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,.35),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(249,115,22,.20),transparent_28%)]" />
+        <div className="relative z-10">
+          <BrandLogo light />
+          <nav className="mt-8 space-y-1.5">
+            {visible.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => `flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold transition ${isActive ? 'bg-white text-brand-800 shadow-lg shadow-emerald-950/30' : 'text-emerald-50/75 hover:bg-white/10 hover:text-white'}`}
+                >
+                  <Icon size={18} />
+                  {item.label}
+                  {item.to === '/notifications' && unreadCount > 0 && <span className="ml-auto rounded-full bg-cafe-500 px-2 py-0.5 text-xs text-white">{unreadCount}</span>}
+                </NavLink>
+              );
+            })}
+          </nav>
         </div>
-        <nav className="mt-8 space-y-1">
-          {visible.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`}
-              >
-                <Icon size={18} />
-                {item.label}
-                {item.to === '/notifications' && unreadCount > 0 && <span className="ml-auto rounded-full bg-rose-600 px-2 py-0.5 text-xs text-white">{unreadCount}</span>}
-              </NavLink>
-            );
-          })}
-        </nav>
-        <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-slate-50 p-4">
-          <p className="text-sm font-bold text-slate-900">{user?.name}</p>
-          <p className="text-xs text-slate-500">{user?.email}</p>
-          <p className="mt-2 text-xs font-semibold text-brand-700">{roleLabel(user?.role)}</p>
-          <button onClick={signOut} className="btn-secondary mt-4 w-full"><LogOut size={16} /> Logout</button>
+        <div className="absolute bottom-5 left-5 right-5 z-10 rounded-[1.5rem] border border-white/10 bg-white/10 p-4 backdrop-blur-xl">
+          <p className="text-sm font-black text-white">{user?.name}</p>
+          <p className="truncate text-xs text-emerald-50/70">{user?.email}</p>
+          <p className="mt-2 text-xs font-black text-cafe-100">{roleLabel(user?.role)}</p>
+          <button onClick={signOut} className="btn-secondary mt-4 w-full border-white/10 bg-white/90"><LogOut size={16} /> Logout</button>
         </div>
       </aside>
 
       <main className="lg:pl-72">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-10 border-b border-white/60 bg-white/80 px-4 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl lg:px-8">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Production-ready MVP</p>
-              <h1 className="text-2xl font-black text-slate-900">Hospital Food Management System</h1>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-700">Production-ready nutrition ops</p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-950">Cure Cafe</h1>
             </div>
             <div className="flex gap-2 overflow-x-auto lg:hidden">
-              {visible.map((item) => <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${isActive ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{item.label}</NavLink>)}
+              {visible.map((item) => <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${isActive ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 shadow-sm'}`}>{item.label}</NavLink>)}
             </div>
           </div>
         </header>

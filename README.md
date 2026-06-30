@@ -1,94 +1,101 @@
-# Hospital Food Management System (HFMS)
+# Cure Cafe
 
-Production-ready startup MVP for a hospital food operations platform. The app includes JWT authentication, role-based access control, patient meal management, diet prescriptions and approvals, kitchen dashboard, delivery tracking, inventory, billing, reports, notifications and feedback.
+Cure Cafe is a production-ready MVP for hospital nutrition operations. It manages admitted patient diets, doctor prescriptions, dietician approvals, kitchen preparation, ward-wise meal distribution, delivery tracking, inventory, billing, notifications, analytics and patient feedback.
+
+The project uses **PostgreSQL + Prisma** and now includes **email-verified registration**.
+
+---
 
 ## 1. System Architecture
 
 ```text
-React + Tailwind + Redux Toolkit / RTK Query
+React + Tailwind CSS + Redux Toolkit / RTK Query
           |
           | HTTPS REST API + JWT Bearer token
           v
 Node.js + Express.js API
-  - auth/RBAC middleware
-  - validation with Zod
-  - module-isolated route controllers
+  - JWT authentication + refresh token rotation
+  - email verification before first login
+  - role-based access control
+  - Zod request validation
   - centralized exception handling
-  - notification service adapter layer
+  - isolated business modules
+  - SMTP email adapter
+  - notification adapter service
   - file upload service
           |
           v
 Prisma ORM
           |
           v
-SQLite for local testing
-(PostgreSQL-compatible production architecture)
+PostgreSQL
 ```
 
 ### Production scaling path
 
-- **Frontend**: deploy static Vite build to CDN/edge.
+- **Frontend**: deploy the Vite build to CDN/edge or serve it from the API container.
 - **API**: stateless Express containers behind a load balancer.
-- **Database**: replace local SQLite with PostgreSQL, add read replicas and connection pooling.
-- **Background jobs**: move meal generation, SMS/email and reports to queues such as BullMQ/SQS/Kafka.
+- **Database**: PostgreSQL with managed backups, connection pooling and read replicas as traffic grows.
+- **Background jobs**: move meal generation, email/SMS and heavy reports to BullMQ/SQS/Kafka.
 - **Files**: replace local uploads with S3/GCS signed URLs.
-- **Notifications**: plug in SES/Twilio/Firebase from `notification.service.js`.
-- **Observability**: add OpenTelemetry, centralized logs, audit trails and SLO alerts.
-- **Security**: rotate JWT secrets, store refresh tokens server-side, enforce HTTPS, WAF/rate limits and DB backups.
+- **Notifications**: plug real email/SMS providers into `email.service.js` and `notification.service.js`.
+- **Observability**: add OpenTelemetry, centralized logs, audit trails and alerts.
+- **Security**: rotate JWT secrets, enforce HTTPS, protect PHI/PII, enable backups and least-privilege DB users.
+
+---
 
 ## 2. Tech Stack
 
 ### Frontend
+
 - React
 - Vite
 - Tailwind CSS
 - Redux Toolkit + RTK Query
 - React Router
+- Custom Cure Cafe SVG logo
 
 ### Backend
+
 - Node.js
 - Express.js
 - Prisma ORM
-- SQLite local database
+- PostgreSQL
 - JWT auth + refresh token rotation
+- Email verification using SMTP/Nodemailer
 - RBAC middleware
 - Zod validation
 - Multer file uploads
-- Helmet, CORS, compression, rate limiting
+- Helmet, CORS, compression and rate limiting
+
+---
 
 ## 3. File Structure
 
 ```text
 hfms/
-  package.json                 # npm workspaces root
+  docker-compose.yml            # PostgreSQL + Adminer local setup
+  render.yaml                   # Render deployment blueprint with Postgres
+  package.json                  # npm workspaces root
   .env.example
+  Breakdown.md                  # detailed folder/file explanation
   apps/
     api/
       package.json
-      .env                     # local dev env already provided
+      .env                     # local dev env
       prisma/
-        schema.prisma          # database schema
-        seed.js                # demo seed data and credentials
+        schema.prisma          # PostgreSQL Prisma schema
+        seed.js                # idempotent demo seed data
       scripts/
-        smoke-test.js          # API smoke test
+        smoke-test.js
       src/
-        app.js                 # Express app composition
-        server.js              # API server bootstrap
+        app.js
+        server.js
         constants.js
         config/
-          env.js
-          prisma.js
         middleware/
-          auth.js
-          errorHandler.js
-          validate.js
         services/
-          notification.service.js
         utils/
-          apiError.js
-          asyncHandler.js
-          date.js
-          json.js
         modules/
           auth/
           users/
@@ -103,8 +110,9 @@ hfms/
           files/
     web/
       package.json
-      vite.config.js
-      tailwind.config.js
+      public/
+        logo.svg
+        favicon.svg
       src/
         App.jsx
         main.jsx
@@ -117,11 +125,55 @@ hfms/
         utils/
 ```
 
-## 4. Database Schema Summary
+---
 
-Core tables in `apps/api/prisma/schema.prisma`:
+## 4. Authentication and Email Verification
 
-- `User`: staff and patient users with roles, password hash and refresh token hash.
+Cure Cafe supports verified registration:
+
+1. A public user registers from `/register`.
+2. The backend creates the account as inactive and unverified.
+3. A formal verification email is sent to the registered email address.
+4. The user opens `/verify-email?token=...`.
+5. Only after verification does the account become active and eligible for login.
+6. If an unverified user tries to login, Cure Cafe sends a fresh verification email and blocks login.
+
+### Auth endpoints
+
+- `POST /auth/register`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /auth/me`
+
+### SMTP environment variables
+
+For real email delivery, configure these in `apps/api/.env` or your deployment platform:
+
+```env
+APP_URL="http://localhost:5173"
+EMAIL_VERIFICATION_TTL_MINUTES=60
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-gmail-app-password"
+SMTP_FROM="Cure Cafe <your-email@gmail.com>"
+```
+
+In local development, if SMTP is empty, Cure Cafe logs the verification link to the API console and also returns a dev-only verification link. In production, SMTP must be configured or email verification will fail safely.
+
+> For Gmail, use a Gmail App Password, not your normal Gmail password.
+
+---
+
+## 5. Database Schema Summary
+
+Core PostgreSQL-backed tables in `apps/api/prisma/schema.prisma`:
+
+- `User`: staff and patient users with roles, password hash, email verification fields and refresh token hash.
 - `Patient`: admitted/discharged patient profile, ward, room, bed, preferences, allergies and current diet.
 - `DietPrescription`: doctor-created dietary recommendation pending dietician approval.
 - `DietPlan`: approved/customized diet plan assigned to patient.
@@ -136,25 +188,32 @@ Core tables in `apps/api/prisma/schema.prisma`:
 - `FoodWastage`: wastage reporting.
 - `FileAsset`: uploaded patient reports, diet charts and food images.
 
-## 5. API Endpoints
+---
+
+## 6. API Endpoints
 
 Base URL: `http://localhost:4000/api`
 
 ### Auth
+
+- `POST /auth/register`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
 - `POST /auth/login`
-- `POST /auth/register` patient self-registration
 - `POST /auth/refresh`
 - `POST /auth/logout`
 - `GET /auth/me`
 
-### Users, Admin only
+### Users
+
 - `GET /users`
 - `POST /users`
 - `GET /users/:id`
 - `PATCH /users/:id`
-- `DELETE /users/:id` soft deactivate
+- `DELETE /users/:id`
 
 ### Patients
+
 - `GET /patients`
 - `POST /patients`
 - `GET /patients/:id`
@@ -164,6 +223,7 @@ Base URL: `http://localhost:4000/api`
 - `POST /patients/:id/files`
 
 ### Diets
+
 - `GET /diets/types`
 - `GET /diets/prescriptions`
 - `POST /diets/prescriptions`
@@ -174,6 +234,7 @@ Base URL: `http://localhost:4000/api`
 - `PATCH /diets/plans/:id`
 
 ### Meals and Kitchen
+
 - `GET /meals/schedules`
 - `PUT /meals/schedules/:id`
 - `POST /meals/orders/generate`
@@ -184,6 +245,7 @@ Base URL: `http://localhost:4000/api`
 - `GET /meals/kitchen/dashboard`
 
 ### Inventory
+
 - `GET /inventory/items`
 - `POST /inventory/items`
 - `PATCH /inventory/items/:id`
@@ -194,12 +256,14 @@ Base URL: `http://localhost:4000/api`
 - `GET /inventory/reports/daily-consumption`
 
 ### Billing
+
 - `GET /billing/charges`
 - `POST /billing/charges`
 - `PATCH /billing/charges/:id/status`
 - `GET /billing/patient/:patientId/summary`
 
 ### Reports
+
 - `GET /reports/daily-meals`
 - `GET /reports/diet-distribution`
 - `GET /reports/food-wastage`
@@ -208,38 +272,118 @@ Base URL: `http://localhost:4000/api`
 - `GET /reports/monthly-expenditure`
 
 ### Notifications
+
 - `GET /notifications`
 - `POST /notifications`
 - `PATCH /notifications/:id/read`
 - `DELETE /notifications/:id`
 
 ### Feedback
+
 - `GET /feedback`
 - `POST /feedback`
 - `GET /feedback/summary/ratings`
 
-## 6. UI Architecture
+---
 
-- `Layout.jsx`: role-aware side navigation and session controls.
-- `ProtectedRoute.jsx`: token + optional role gate.
-- `services/api.js`: centralized RTK Query API client with automatic refresh-token retry.
-- Pages map to modules:
-  - Dashboard
-  - Users
-  - Patients
-  - Diets
-  - Meals
-  - Kitchen
-  - Deliveries
-  - Inventory
-  - Billing
-  - Reports
-  - Notifications
-  - Feedback
+## 7. PostgreSQL Setup Options
 
-## 7. Run Locally
+You only need one of these options.
 
-Requirements: Node.js 20+
+### Option A: Docker Desktop, easiest
+
+Install Docker Desktop, then run:
+
+```bash
+cd hfms
+docker compose up -d postgres adminer
+```
+
+This starts:
+
+- PostgreSQL on `localhost:5432`
+- Adminer database UI on `http://localhost:8080`
+
+Adminer login:
+
+```txt
+System: PostgreSQL
+Server: postgres
+Username: postgres
+Password: postgres
+Database: cure_cafe
+```
+
+Local API connection string:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cure_cafe?schema=public"
+```
+
+### Option B: Native PostgreSQL install
+
+#### Windows
+
+1. Download PostgreSQL installer from the official PostgreSQL website.
+2. Install PostgreSQL.
+3. Remember the password you set for the `postgres` user.
+4. Open pgAdmin or SQL Shell.
+5. Create the database:
+
+```sql
+CREATE DATABASE cure_cafe;
+```
+
+Then set:
+
+```env
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/cure_cafe?schema=public"
+```
+
+#### macOS with Homebrew
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+createdb cure_cafe
+```
+
+If your macOS username is the DB user:
+
+```env
+DATABASE_URL="postgresql://YOUR_MAC_USERNAME@localhost:5432/cure_cafe?schema=public"
+```
+
+Or create a `postgres` user/password if you prefer.
+
+#### Ubuntu / Debian
+
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo -u postgres psql
+```
+
+Inside `psql`:
+
+```sql
+ALTER USER postgres PASSWORD 'postgres';
+CREATE DATABASE cure_cafe;
+\q
+```
+
+Then use:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cure_cafe?schema=public"
+```
+
+---
+
+## 8. Run Locally
+
+### With Docker PostgreSQL
 
 ```bash
 cd hfms
@@ -247,47 +391,113 @@ npm run setup
 npm run dev
 ```
 
+The setup command will:
+
+1. Install dependencies.
+2. Start PostgreSQL and Adminer through Docker Compose.
+3. Push the Prisma schema into PostgreSQL.
+4. Seed demo data.
+
 Open:
 
 - Web: `http://localhost:5173`
 - API health: `http://localhost:4000/health`
+- Adminer: `http://localhost:8080`
 
-If you need to reset demo data:
+### Without Docker
+
+Start your local PostgreSQL manually first, then run:
+
+```bash
+cd hfms
+npm install
+npm run db:push -w apps/api
+npm run db:seed -w apps/api
+npm run dev
+```
+
+### Reset demo data
 
 ```bash
 npm run db:reset -w apps/api
 ```
 
-Run API smoke test after setup:
+### Smoke test
 
 ```bash
 npm run smoke:test
 ```
 
-## 8. Demo Credentials
+---
 
-All seeded users use password: `Admin@1234`
+## 9. Seeded Credentials
 
-| Role | Email |
-|---|---|
-| Admin | `admin@hfms.test` |
-| Doctor | `doctor@hfms.test` |
-| Dietician | `dietician@hfms.test` |
-| Kitchen Staff | `kitchen@hfms.test` |
-| Delivery Staff | `delivery@hfms.test` |
-| Patient | `patient@hfms.test` |
+The login page intentionally does **not** display demo credentials.
 
-## 9. RBAC Summary
+| Role | Email | Password |
+|---|---|---|
+| Admin | `devloper7even@gmail.com` | `Password7` |
+| Doctor | `doctor@curecafe.test` | `Admin@1234` |
+| Dietician | `dietician@curecafe.test` | `Admin@1234` |
+| Kitchen Staff | `kitchen@curecafe.test` | `Admin@1234` |
+| Delivery Staff | `delivery@curecafe.test` | `Admin@1234` |
+| Patient | `patient@curecafe.test` | `Admin@1234` |
 
-- **Admin**: all modules, users, billing status, reports.
+All seeded accounts are already email-verified for testing.
+
+---
+
+## 10. RBAC Summary
+
+- **Admin**: all modules, users, billing status and reports.
 - **Doctor**: patients and prescriptions.
-- **Dietician**: patients, diet approvals/customization, billing, reports.
-- **Kitchen Staff**: schedules, meal preparation/packing, inventory, kitchen reports.
+- **Dietician**: patients, diet approvals/customization, billing and reports.
+- **Kitchen Staff**: schedules, meal preparation/packing, inventory and kitchen reports.
 - **Delivery Staff**: dispatch and deliver packed meals.
 - **Patient**: own profile, own meals, own bills, feedback and notifications.
 
-## 10. Important Notes
+---
 
-- The local MVP uses SQLite to make the app immediately testable. For production, switch Prisma datasource to PostgreSQL and add migrations.
-- Email/SMS are intentionally adapter stubs in the MVP. In-app notifications are persisted and fully functional.
-- File uploads are local in `apps/api/uploads`; production should use object storage.
+## 11. Deployment Notes
+
+`render.yaml` is configured for a one-service deployment with a PostgreSQL database.
+
+The API serves the React production build when `NODE_ENV=production`, so Cure Cafe can run as one web service.
+
+Render build command:
+
+```bash
+npm ci --include=dev && npm run db:push -w apps/api && npm run db:seed -w apps/api && npm run build -w apps/web
+```
+
+Render start command:
+
+```bash
+npm run start -w apps/api
+```
+
+Before enabling public registration in production, configure:
+
+```env
+APP_URL="https://your-deployed-domain.com"
+SMTP_HOST="your-smtp-host"
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER="your-smtp-user"
+SMTP_PASS="your-smtp-password"
+SMTP_FROM="Cure Cafe <your-from-email>"
+```
+
+For production, use a managed PostgreSQL database with backups. Do not use local uploads for important patient documents; replace local storage with S3/GCS or another object storage provider.
+
+---
+
+## 12. Important Notes
+
+- The app targets PostgreSQL by default.
+- `db:seed` is safe/idempotent: it skips seeding if demo data already exists.
+- `db:reset` will wipe and recreate demo data.
+- Public registration requires email verification before login.
+- In production, SMTP must be configured for registration/verification emails.
+- SMS notifications are adapter stubs in the MVP. In-app notifications are persisted and functional.
+- Local uploads are saved in `apps/api/uploads`; production should use object storage.

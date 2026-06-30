@@ -14,7 +14,7 @@ router.use(requireAuth, authorize(ROLES.ADMIN));
 
 function sanitizeUser(user) {
   if (!user) return user;
-  const { passwordHash, refreshTokenHash, patientProfile, ...safe } = user;
+  const { passwordHash, refreshTokenHash, emailVerificationTokenHash, emailVerificationExpiresAt, patientProfile, ...safe } = user;
   return { ...safe, patientProfile: hydratePatient(patientProfile) };
 }
 
@@ -62,7 +62,7 @@ const createSchema = z.object({
 router.post('/', validate(createSchema), asyncHandler(async (req, res) => {
   const { password, ...data } = req.validated.body;
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await prisma.user.create({ data: { ...data, passwordHash } });
+  const user = await prisma.user.create({ data: { ...data, passwordHash, emailVerifiedAt: new Date(), isActive: true } });
   res.status(201).json({ success: true, data: { user: sanitizeUser(user) } });
 }));
 

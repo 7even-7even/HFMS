@@ -1,15 +1,17 @@
 {
-  "name": "hospital-food-management-system",
+  "name": "cure-cafe",
   "version": "1.0.0",
   "private": true,
-  "description": "Production-ready MVP for Hospital Food Management System (HFMS)",
+  "description": "Production-ready MVP for Cure Cafe, a hospital nutrition and meal operations platform",
   "workspaces": [
     "apps/api",
     "apps/web"
   ],
   "scripts": {
-    "setup": "npm install && npm run db:push -w apps/api && npm run db:seed -w apps/api",
-    "dev": "concurrently -n API,WEB -c blue,green \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "postgres:up": "docker compose up -d postgres adminer",
+    "postgres:down": "docker compose down",
+    "setup": "npm install && npm run postgres:up && npm run db:push -w apps/api && npm run db:seed -w apps/api",
+    "dev": "concurrently -n API,WEB -c teal,amber \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
     "start": "npm run start -w apps/api",
     "build": "npm run build -w apps/web",
     "smoke:test": "npm run smoke:test -w apps/api"

@@ -35,10 +35,15 @@ async function requireAuth(req, _res, next) {
     }
 
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
 
     if (!user || !user.isActive) {
       throw new ApiError(401, 'User account is inactive or missing');
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new ApiError(403, 'Email verification required');
     }
 
     req.user = {
@@ -47,7 +52,8 @@ async function requireAuth(req, _res, next) {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      emailVerifiedAt: user.emailVerifiedAt
     };
     req.auth = payload;
     next();

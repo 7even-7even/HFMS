@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { z } = require('zod');
@@ -10,13 +11,60 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 const { ApiError } = require('../../utils/apiError');
 const { ROLES } = require('../../constants');
 const { hydratePatient } = require('../../utils/json');
+const { sendVerificationEmail, hasSmtpConfig } = require('../../services/email.service');
 
 const router = express.Router();
 
 function sanitizeUser(user) {
   if (!user) return user;
-  const { passwordHash, refreshTokenHash, patientProfile, ...safe } = user;
+  const {
+    passwordHash,
+    refreshTokenHash,
+    emailVerificationTokenHash,
+    emailVerificationExpiresAt,
+    patientProfile,
+    ...safe
+  } = user;
   return { ...safe, patientProfile: hydratePatient(patientProfile) };
+}
+
+function createRawVerificationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function verificationUrl(token) {
+  const baseUrl = env.APP_URL.replace(/\/$/, '');
+  return `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`;
+}
+
+function assertEmailDeliveryAvailable() {
+  if (env.NODE_ENV === 'production' && !hasSmtpConfig()) {
+    throw new ApiError(503, 'Email verification service is not configured. Please contact the administrator.');
+  }
+}
+
+async function issueVerificationEmail(user) {
+  assertEmailDeliveryAvailable();
+  const rawToken = createRawVerificationToken();
+  const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_TTL_MINUTES * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerificationTokenHash: hashToken(rawToken),
+      emailVerificationExpiresAt: expiresAt,
+      isActive: false
+    }
+  });
+
+  const link = verificationUrl(rawToken);
+  const mail = await sendVerificationEmail({
+    user,
+    verificationLink: link,
+    expiresMinutes: env.EMAIL_VERIFICATION_TTL_MINUTES
+  });
+
+  return { link, mail };
 }
 
 const registerSchema = z.object({
@@ -30,13 +78,88 @@ const registerSchema = z.object({
 });
 
 router.post('/register', validate(registerSchema), asyncHandler(async (req, res) => {
+  assertEmailDeliveryAvailable();
   const { name, email, phone, password } = req.validated.body;
   const passwordHash = await bcrypt.hash(password, 12);
+
   const user = await prisma.user.create({
-    data: { name, email, phone, passwordHash, role: ROLES.PATIENT }
+    data: {
+      name,
+      email,
+      phone,
+      passwordHash,
+      role: ROLES.PATIENT,
+      isActive: false,
+      emailVerifiedAt: null
+    }
   });
 
-  res.status(201).json({ success: true, data: { user: sanitizeUser(user) } });
+  const verification = await issueVerificationEmail(user);
+
+  res.status(201).json({
+    success: true,
+    message: 'Registration submitted. Please verify your email address to activate your Cure Cafe account.',
+    data: {
+      user: sanitizeUser(user),
+      ...(env.NODE_ENV !== 'production' && verification.mail.preview ? { devVerificationLink: verification.link } : {})
+    }
+  });
+}));
+
+const verifyEmailSchema = z.object({
+  body: z.object({ token: z.string().min(32) })
+});
+
+router.post('/verify-email', validate(verifyEmailSchema), asyncHandler(async (req, res) => {
+  const tokenHash = hashToken(req.validated.body.token);
+  const user = await prisma.user.findFirst({
+    where: { emailVerificationTokenHash: tokenHash },
+    include: { patientProfile: { include: { currentDietPlan: true } } }
+  });
+
+  if (!user) throw new ApiError(400, 'Invalid or already used verification token');
+  if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+    throw new ApiError(400, 'Verification token has expired. Please request a new verification email.');
+  }
+
+  const verifiedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerifiedAt: new Date(),
+      emailVerificationTokenHash: null,
+      emailVerificationExpiresAt: null,
+      isActive: true
+    },
+    include: { patientProfile: { include: { currentDietPlan: true } } }
+  });
+
+  res.json({ success: true, message: 'Email verified successfully. You can now login.', data: { user: sanitizeUser(verifiedUser) } });
+}));
+
+const resendVerificationSchema = z.object({
+  body: z.object({ email: z.string().email().transform((v) => v.toLowerCase()) })
+});
+
+router.post('/resend-verification', validate(resendVerificationSchema), asyncHandler(async (req, res) => {
+  const { email } = req.validated.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    return res.json({ success: true, message: 'If an unverified account exists for this email, a verification email has been sent.' });
+  }
+
+  if (user.emailVerifiedAt) {
+    return res.json({ success: true, message: 'This email is already verified. Please login.' });
+  }
+
+  const verification = await issueVerificationEmail(user);
+  res.json({
+    success: true,
+    message: 'Verification email sent. Please check your inbox.',
+    data: {
+      ...(env.NODE_ENV !== 'production' && verification.mail.preview ? { devVerificationLink: verification.link } : {})
+    }
+  });
 }));
 
 const loginSchema = z.object({
@@ -53,12 +176,20 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
     include: { patientProfile: { include: { currentDietPlan: true } } }
   });
 
-  if (!user || !user.isActive) {
-    throw new ApiError(401, 'Invalid email or password');
-  }
+  if (!user) throw new ApiError(401, 'Invalid email or password');
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) throw new ApiError(401, 'Invalid email or password');
+
+  if (!user.emailVerifiedAt) {
+    const verification = await issueVerificationEmail(user);
+    throw new ApiError(403, 'Email verification required. A fresh verification email has been sent to your registered email address.', {
+      code: 'EMAIL_VERIFICATION_REQUIRED',
+      ...(env.NODE_ENV !== 'production' && verification.mail.preview ? { devVerificationLink: verification.link } : {})
+    });
+  }
+
+  if (!user.isActive) throw new ApiError(403, 'User account is inactive. Please contact the administrator.');
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
@@ -88,7 +219,7 @@ router.post('/refresh', validate(refreshSchema), asyncHandler(async (req, res) =
     where: { id: payload.sub },
     include: { patientProfile: { include: { currentDietPlan: true } } }
   });
-  if (!user || !user.isActive || user.refreshTokenHash !== hashToken(refreshToken)) {
+  if (!user || !user.isActive || !user.emailVerifiedAt || user.refreshTokenHash !== hashToken(refreshToken)) {
     throw new ApiError(401, 'Refresh token revoked');
   }
 

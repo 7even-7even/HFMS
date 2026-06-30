@@ -1,0 +1,27 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cure Cafe logo">
+  <defs>
+    <linearGradient id="bg" x1="36" y1="28" x2="220" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14B8A6"/>
+      <stop offset="0.55" stop-color="#047857"/>
+      <stop offset="1" stop-color="#92400E"/>
+    </linearGradient>
+    <linearGradient id="bowl" x1="64" y1="134" x2="192" y2="202" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7ED"/>
+      <stop offset="1" stop-color="#FED7AA"/>
+    </linearGradient>
+    <filter id="shadow" x="24" y="24" width="208" height="208" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#064E3B" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect x="28" y="28" width="200" height="200" rx="54" fill="url(#bg)" filter="url(#shadow)"/>
+  <circle cx="86" cy="75" r="22" fill="#ECFDF5" opacity="0.18"/>
+  <circle cx="188" cy="187" r="28" fill="#FFF7ED" opacity="0.14"/>
+  <path d="M94 73c-12 13-4 25 7 35M128 60c-15 18-7 33 7 48M162 73c-12 13-4 25 7 35" stroke="#ECFDF5" stroke-width="10" stroke-linecap="round"/>
+  <path d="M58 129h140c-2 43-33 72-70 72s-68-29-70-72Z" fill="url(#bowl)"/>
+  <path d="M54 129h148" stroke="#FFF7ED" stroke-width="16" stroke-linecap="round"/>
+  <path d="M82 151c18 16 74 16 92 0" stroke="#92400E" stroke-opacity="0.28" stroke-width="8" stroke-linecap="round"/>
+  <path d="M179 142c24-5 39 6 34 24-4 16-22 23-42 15" stroke="#FFF7ED" stroke-width="12" stroke-linecap="round"/>
+  <path d="M121 91h18v20h20v18h-20v20h-18v-20h-20v-18h20V91Z" fill="#10B981" stroke="#ECFDF5" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M78 101c21-28 56-33 83-13-28 3-46 17-56 37-9-7-18-14-27-24Z" fill="#BBF7D0"/>
+  <path d="M84 102c25-4 48-6 73-13" stroke="#047857" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+</svg>

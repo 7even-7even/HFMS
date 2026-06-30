@@ -29,19 +29,45 @@ async function reset() {
 }
 
 async function main() {
-  await reset();
+  const shouldReset = process.argv.includes('--reset') || process.env.SEED_RESET === 'true';
+  if (shouldReset) {
+    await reset();
+  } else {
+    const existingAdmin = await prisma.user.findUnique({ where: { email: 'devloper7even@gmail.com' } });
+    if (existingAdmin) {
+      console.log('Cure Cafe seed skipped: demo data already exists. Use `npm run db:reset -w apps/api` to reset it.');
+      return;
+    }
 
-  const passwordHash = await bcrypt.hash('Admin@1234', 12);
+    const existingUsers = await prisma.user.count();
+    if (existingUsers > 0) {
+      console.log('Cure Cafe seed found existing users with a different seed set. Use `npm run db:reset -w apps/api` to recreate demo data with the latest admin credentials.');
+      return;
+    }
+  }
+
+  const adminPasswordHash = await bcrypt.hash('Password7', 12);
+  const demoPasswordHash = await bcrypt.hash('Admin@1234', 12);
   const users = {};
   for (const user of [
-    { key: 'admin', name: 'Developer Seven', email: 'devloper7even@gmail.com', role: 'ADMIN', phone: '+919000000001' },
-    { key: 'doctor', name: 'Dr. Meera Rao', email: 'doctor@hfms.test', role: 'DOCTOR', phone: '+919000000002' },
-    { key: 'dietician', name: 'Anika Dietician', email: 'dietician@hfms.test', role: 'DIETICIAN', phone: '+919000000003' },
-    { key: 'kitchen', name: 'Kabir Kitchen', email: 'kitchen@hfms.test', role: 'KITCHEN_STAFF', phone: '+919000000004' },
-    { key: 'delivery', name: 'Rohan Delivery', email: 'delivery@hfms.test', role: 'DELIVERY_STAFF', phone: '+919000000005' },
-    { key: 'patientUser', name: 'Priya Patient', email: 'patient@hfms.test', role: 'PATIENT', phone: '+919000000006' }
+    { key: 'admin', name: 'Admin', email: 'devloper7even@gmail.com', role: 'ADMIN', phone: '+919000000001', passwordHash: adminPasswordHash },
+    { key: 'doctor', name: 'Dr. Meera Rao', email: 'doctor@curecafe.test', role: 'DOCTOR', phone: '+919000000002', passwordHash: demoPasswordHash },
+    { key: 'dietician', name: 'Anika Dietician', email: 'dietician@curecafe.test', role: 'DIETICIAN', phone: '+919000000003', passwordHash: demoPasswordHash },
+    { key: 'kitchen', name: 'Kabir Kitchen', email: 'kitchen@curecafe.test', role: 'KITCHEN_STAFF', phone: '+919000000004', passwordHash: demoPasswordHash },
+    { key: 'delivery', name: 'Rohan Delivery', email: 'delivery@curecafe.test', role: 'DELIVERY_STAFF', phone: '+919000000005', passwordHash: demoPasswordHash },
+    { key: 'patientUser', name: 'Priya Patient', email: 'patient@curecafe.test', role: 'PATIENT', phone: '+919000000006', passwordHash: demoPasswordHash }
   ]) {
-    users[user.key] = await prisma.user.create({ data: { name: user.name, email: user.email, role: user.role, phone: user.phone, passwordHash } });
+    users[user.key] = await prisma.user.create({
+      data: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        passwordHash: user.passwordHash,
+        emailVerifiedAt: new Date(),
+        isActive: true
+      }
+    });
   }
 
   const schedules = [];
@@ -90,7 +116,7 @@ async function main() {
         preferences: jsonArray(seed.preferences),
         restrictions: jsonArray(seed.restrictions),
         allergies: jsonArray(seed.allergies),
-        notes: 'Seed patient for HFMS demo.'
+        notes: 'Seed patient for Cure Cafe demo.'
       }
     });
     const plan = await prisma.dietPlan.create({
@@ -233,14 +259,14 @@ async function main() {
     data: { patientId: patients.priya.id, mealOrderId: priyaBreakfast.id, taste: 5, quality: 4, quantity: 5, timing: 5, comments: 'Good taste and delivered on time.' }
   });
 
-  console.log('HFMS seed complete. Demo credentials:');
+  console.log('Cure Cafe seed complete. Demo credentials:');
   console.table([
-    ['Admin', 'admin@hfms.test', 'Admin@1234'],
-    ['Doctor', 'doctor@hfms.test', 'Admin@1234'],
-    ['Dietician', 'dietician@hfms.test', 'Admin@1234'],
-    ['Kitchen Staff', 'kitchen@hfms.test', 'Admin@1234'],
-    ['Delivery Staff', 'delivery@hfms.test', 'Admin@1234'],
-    ['Patient', 'patient@hfms.test', 'Admin@1234']
+    ['Admin', 'devloper7even@gmail.com', 'Password7'],
+    ['Doctor', 'doctor@curecafe.test', 'Admin@1234'],
+    ['Dietician', 'dietician@curecafe.test', 'Admin@1234'],
+    ['Kitchen Staff', 'kitchen@curecafe.test', 'Admin@1234'],
+    ['Delivery Staff', 'delivery@curecafe.test', 'Admin@1234'],
+    ['Patient', 'patient@curecafe.test', 'Admin@1234']
   ]);
 }
 

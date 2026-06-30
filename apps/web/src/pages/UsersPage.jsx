@@ -11,12 +11,12 @@ export default function UsersPage() {
   const { data, isLoading, error } = useUsersQuery({ role: role || undefined });
   const [createUser, createState] = useCreateUserMutation();
   const [deactivate] = useDeactivateUserMutation();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: 'Admin@1234', role: 'DOCTOR' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'DOCTOR' });
 
   async function submit(e) {
     e.preventDefault();
     await createUser(form).unwrap();
-    setForm({ name: '', email: '', phone: '', password: 'Admin@1234', role: 'DOCTOR' });
+    setForm({ name: '', email: '', phone: '', password: '', role: 'DOCTOR' });
   }
 
   return (
@@ -32,7 +32,7 @@ export default function UsersPage() {
           <label><span className="label">Email</span><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label>
           <label><span className="label">Phone</span><input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
           <label><span className="label">Role</span><select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{roles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}</select></label>
-          <label><span className="label">Temporary password</span><input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
+          <label><span className="label">Temporary password</span><input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Minimum 8 characters" required /></label>
           {createState.error && <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{apiError(createState.error)}</p>}
           <button className="btn-primary w-full" disabled={createState.isLoading}>Create account</button>
         </form>

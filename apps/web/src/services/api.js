@@ -37,6 +37,9 @@ export const api = createApi({
   tagTypes: ['Auth', 'Users', 'Patients', 'Diets', 'Meals', 'Kitchen', 'Inventory', 'Billing', 'Reports', 'Notifications', 'Feedback'],
   endpoints: (builder) => ({
     login: builder.mutation({ query: (body) => ({ url: '/auth/login', method: 'POST', body }) }),
+    register: builder.mutation({ query: (body) => ({ url: '/auth/register', method: 'POST', body }) }),
+    verifyEmail: builder.mutation({ query: (body) => ({ url: '/auth/verify-email', method: 'POST', body }) }),
+    resendVerification: builder.mutation({ query: (body) => ({ url: '/auth/resend-verification', method: 'POST', body }) }),
     me: builder.query({ query: () => '/auth/me', providesTags: ['Auth'] }),
 
     users: builder.query({ query: (params = {}) => ({ url: '/users', params }), providesTags: ['Users'] }),
@@ -98,6 +101,9 @@ export const api = createApi({
 
 export const {
   useLoginMutation,
+  useRegisterMutation,
+  useVerifyEmailMutation,
+  useResendVerificationMutation,
   useMeQuery,
   useUsersQuery,
   useCreateUserMutation,

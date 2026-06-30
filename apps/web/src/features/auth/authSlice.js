@@ -2,7 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const stored = (() => {
   try {
-    return JSON.parse(localStorage.getItem('hfms_auth') || '{}');
+    return JSON.parse(localStorage.getItem('cure_cafe_auth') || '{}');
   } catch {
     return {};
   }
@@ -16,7 +16,7 @@ const initialState = {
 
 function persist(state) {
   const payload = { accessToken: state.accessToken, refreshToken: state.refreshToken, user: state.user };
-  localStorage.setItem('hfms_auth', JSON.stringify(payload));
+  localStorage.setItem('cure_cafe_auth', JSON.stringify(payload));
 }
 
 const authSlice = createSlice({
@@ -37,7 +37,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.user = null;
-      localStorage.removeItem('hfms_auth');
+      localStorage.removeItem('cure_cafe_auth');
     }
   }
 });

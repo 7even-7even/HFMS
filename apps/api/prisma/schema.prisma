@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,10 +12,13 @@ model User {
   name               String
   email              String             @unique
   phone              String?
-  passwordHash       String
-  role               String
-  isActive           Boolean            @default(true)
-  refreshTokenHash   String?
+  passwordHash                 String
+  role                         String
+  isActive                     Boolean            @default(true)
+  emailVerifiedAt              DateTime?
+  emailVerificationTokenHash   String?
+  emailVerificationExpiresAt   DateTime?
+  refreshTokenHash             String?
   patientProfile     Patient?           @relation("PatientUser")
   doctorPrescriptions DietPrescription[] @relation("DoctorPrescriptions")
   dieticianApprovals DietPrescription[] @relation("DieticianApprovals")
@@ -26,6 +29,8 @@ model User {
 
   @@index([role])
   @@index([isActive])
+  @@index([emailVerifiedAt])
+  @@index([emailVerificationTokenHash])
 }
 
 model Patient {

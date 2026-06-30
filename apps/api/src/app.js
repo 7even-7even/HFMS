@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -24,7 +25,14 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: env.CORS_ORIGIN.split(',').map((v) => v.trim()), credentials: true }));
+const allowedOrigins = env.CORS_ORIGIN.split(',').map((v) => v.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true
+}));
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +42,7 @@ app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardH
 app.use('/uploads', express.static(uploadRoot));
 
 app.get('/health', (_req, res) => {
-  res.json({ success: true, service: 'HFMS API', status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({ success: true, service: 'Cure Cafe API', status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 app.use('/api/auth', authRoutes);
@@ -47,6 +55,16 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/feedback', feedbackRoutes);
+
+// Production single-service deployment: serve the React build from the API container.
+// This lets PaaS providers run Cure Cafe as one Node web service.
+const clientDist = path.resolve(__dirname, '../../web/dist');
+if (env.NODE_ENV === 'production' && fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get(/^(?!\/api|\/health|\/uploads).*/, (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);

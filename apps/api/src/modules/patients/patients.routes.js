@@ -97,7 +97,9 @@ router.post('/', authorize(ROLES.ADMIN, ROLES.DIETICIAN), validate(createPatient
           email: body.createUser.email,
           phone: body.phone,
           passwordHash,
-          role: ROLES.PATIENT
+          role: ROLES.PATIENT,
+          emailVerifiedAt: new Date(),
+          isActive: true
         }
       });
       userId = user.id;
