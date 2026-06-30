@@ -58,6 +58,7 @@ model Patient {
   prescriptions     DietPrescription[]
   mealOrders        MealOrder[]
   foodOrders        FoodOrder[]
+  queries           PatientQuery[]
   billingCharges    BillingCharge[]
   feedbacks         Feedback[]
   fileAssets        FileAsset[]
@@ -223,6 +224,14 @@ model FoodOrder {
   deliveredAt         DateTime?
   deliveredById       String?
   paymentReceivedAt   DateTime?
+  paymentMethod       String?
+  foodRating          Int?
+  deliveryRating      Int?
+  feedbackMessage     String?
+  foodWarm            Boolean?
+  deliveredSafely     Boolean?
+  staffPolite         Boolean?
+  feedbackSubmittedAt DateTime?
   items               FoodOrderItem[]
   statusHistory       FoodOrderStatusHistory[]
   billingCharge       BillingCharge?
@@ -232,6 +241,8 @@ model FoodOrder {
   @@index([patientId, createdAt])
   @@index([status, createdAt])
   @@index([ward, status])
+  @@index([deliveredById, status])
+  @@index([paymentMethod])
 }
 
 model FoodOrderItem {
@@ -267,6 +278,26 @@ model FoodOrderStatusHistory {
   createdAt   DateTime  @default(now())
 
   @@index([foodOrderId])
+}
+
+model PatientQuery {
+  id             String   @id @default(cuid())
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  targetRole     String
+  assignedToId   String?
+  subject        String
+  message        String
+  response       String?
+  status         String   @default("OPEN")
+  answeredById   String?
+  answeredAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([patientId, status])
+  @@index([targetRole, status])
+  @@index([assignedToId, status])
 }
 
 model InventoryItem {

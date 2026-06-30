@@ -8,16 +8,13 @@ import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import PatientsPage from './pages/PatientsPage';
 import DietsPage from './pages/DietsPage';
-import MealsPage from './pages/MealsPage';
 import MenuPage from './pages/MenuPage';
 import OrdersPage from './pages/OrdersPage';
-import KitchenPage from './pages/KitchenPage';
-import DeliveriesPage from './pages/DeliveriesPage';
 import InventoryPage from './pages/InventoryPage';
 import BillingPage from './pages/BillingPage';
-import ReportsPage from './pages/ReportsPage';
+import QueriesPage from './pages/QueriesPage';
 import NotificationsPage from './pages/NotificationsPage';
-import FeedbackPage from './pages/FeedbackPage';
+import ProfilePage from './pages/ProfilePage';
 import { ROLES } from './utils/format';
 
 export default function App() {
@@ -31,18 +28,15 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
             <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}><Route path="users" element={<UsersPage />} /></Route>
-            <Route path="patients" element={<PatientsPage />} />
-            <Route path="diets" element={<DietsPage />} />
-            <Route path="meals" element={<MealsPage />} />
-            <Route path="menu" element={<MenuPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="kitchen" element={<KitchenPage />} />
-            <Route path="deliveries" element={<DeliveriesPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="billing" element={<BillingPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+            <Route element={<ProtectedRoute roles={[ROLES.DOCTOR, ROLES.DIETICIAN]} />}><Route path="patients" element={<PatientsPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.DOCTOR, ROLES.DIETICIAN]} />}><Route path="diets" element={<DietsPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.KITCHEN_STAFF, ROLES.PATIENT]} />}><Route path="menu" element={<MenuPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.KITCHEN_STAFF, ROLES.DELIVERY_STAFF, ROLES.PATIENT]} />}><Route path="orders" element={<OrdersPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.KITCHEN_STAFF]} />}><Route path="inventory" element={<InventoryPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.PATIENT]} />}><Route path="billing" element={<BillingPage />} /></Route>
+            <Route element={<ProtectedRoute roles={[ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.PATIENT]} />}><Route path="queries" element={<QueriesPage />} /></Route>
             <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="feedback" element={<FeedbackPage />} />
+            <Route element={<ProtectedRoute roles={[ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.PATIENT]} />}><Route path="profile" element={<ProfilePage />} /></Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

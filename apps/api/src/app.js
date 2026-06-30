@@ -11,6 +11,7 @@ const { uploadRoot } = require('./modules/files/upload');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const authRoutes = require('./modules/auth/auth.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const userRoutes = require('./modules/users/users.routes');
 const patientRoutes = require('./modules/patients/patients.routes');
 const dietRoutes = require('./modules/diets/diets.routes');
@@ -20,6 +21,7 @@ const inventoryRoutes = require('./modules/inventory/inventory.routes');
 const billingRoutes = require('./modules/billing/billing.routes');
 const reportRoutes = require('./modules/reports/reports.routes');
 const notificationRoutes = require('./modules/notifications/notifications.routes');
+const queryRoutes = require('./modules/queries/queries.routes');
 const feedbackRoutes = require('./modules/feedback/feedback.routes');
 
 const app = express();
@@ -47,6 +49,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/diets', dietRoutes);
@@ -56,6 +59,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/queries', queryRoutes);
 app.use('/api/feedback', feedbackRoutes);
 
 // Production single-service deployment: serve the React build from the API container.

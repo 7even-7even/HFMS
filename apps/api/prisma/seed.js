@@ -12,6 +12,7 @@ const MEAL_COST_FACTOR = { BREAKFAST: 0.25, LUNCH: 0.35, EVENING_SNACKS: 0.15, D
 
 async function reset() {
   await prisma.patient.updateMany({ data: { currentDietPlanId: null } });
+  await prisma.patientQuery.deleteMany();
   await prisma.fileAsset.deleteMany();
   await prisma.feedback.deleteMany();
   await prisma.billingCharge.deleteMany();

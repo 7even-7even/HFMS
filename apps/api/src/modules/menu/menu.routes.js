@@ -6,7 +6,7 @@ const { validate } = require('../../middleware/validate');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { ApiError } = require('../../utils/apiError');
 const { jsonArray, safeJsonParse } = require('../../utils/json');
-const { ROLES, MENU_ITEM_TYPES, FOOD_ORDER_STATUSES, RESTRICTIONS } = require('../../constants');
+const { ROLES, MENU_ITEM_TYPES, FOOD_ORDER_STATUSES, RESTRICTIONS, PAYMENT_METHODS } = require('../../constants');
 const { notifyRole, notifyUser } = require('../../services/notification.service');
 
 const router = express.Router();
@@ -113,7 +113,7 @@ router.get('/items', validate(listMenuSchema), asyncHandler(async (req, res) => 
 }));
 
 router.get('/types', (_req, res) => {
-  res.json({ success: true, data: { itemTypes: MENU_ITEM_TYPES, orderStatuses: FOOD_ORDER_STATUSES } });
+  res.json({ success: true, data: { itemTypes: MENU_ITEM_TYPES, orderStatuses: FOOD_ORDER_STATUSES, paymentMethods: PAYMENT_METHODS } });
 });
 
 const menuItemBody = z.object({
@@ -290,7 +290,7 @@ router.get('/orders', validate(listOrdersSchema), asyncHandler(async (req, res) 
     const profile = await prisma.patient.findUnique({ where: { userId: req.user.id }, select: { id: true } });
     where = { ...where, patientId: profile?.id || '__none__' };
   } else if (req.user.role === ROLES.DELIVERY_STAFF) {
-    const deliveryStatuses = ['READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    const deliveryStatuses = ['READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
     where = status && !deliveryStatuses.includes(status) ? { id: '__none__' } : { ...where, ...(status ? {} : { status: { in: deliveryStatuses } }) };
   } else if (![ROLES.ADMIN, ROLES.KITCHEN_STAFF, ROLES.DELIVERY_STAFF, ROLES.DIETICIAN].includes(req.user.role)) {
     throw new ApiError(403, 'Forbidden');
@@ -311,16 +311,103 @@ router.get('/orders/:id', asyncHandler(async (req, res) => {
   res.json({ success: true, data: { order: hydrateFoodOrder(order) } });
 }));
 
+const cancelSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+  body: z.object({ reason: z.string().max(500).optional() }).default({})
+});
+
+router.patch('/orders/:id/cancel', validate(cancelSchema), asyncHandler(async (req, res) => {
+  const { id } = req.validated.params;
+  const order = await prisma.foodOrder.findUnique({ where: { id }, include: foodOrderInclude() });
+  if (!order) throw new ApiError(404, 'Food order not found');
+  await assertOrderAccess(req, order);
+  if (req.user.role !== ROLES.PATIENT && req.user.role !== ROLES.ADMIN) throw new ApiError(403, 'Only patients or admin can cancel patient menu orders from this action');
+  if (['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'].includes(order.status)) throw new ApiError(409, 'Order cannot be cancelled after delivery has started');
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const saved = await tx.foodOrder.update({ where: { id }, data: { status: 'CANCELLED' }, include: foodOrderInclude() });
+    await tx.foodOrderStatusHistory.create({ data: { foodOrderId: id, status: 'CANCELLED', changedById: req.user.id, note: req.validated.body.reason || 'Cancelled by patient before delivery stage. ₹20 cancellation charge applied.' } });
+    if (order.billingCharge) {
+      await tx.billingCharge.update({
+        where: { id: order.billingCharge.id },
+        data: { description: `Cancellation charge for Cure Cafe order ${order.orderNumber}`, amount: 20, status: 'POSTED' }
+      });
+    }
+    return saved;
+  });
+
+  await notifyRole(ROLES.KITCHEN_STAFF, {
+    title: 'Patient menu order cancelled',
+    message: `Order ${order.orderNumber} was cancelled before delivery. ₹20 cancellation charge applied.`,
+    type: 'GENERAL',
+    metadata: { foodOrderId: id, orderNumber: order.orderNumber }
+  });
+  if (order.patient?.userId) {
+    await notifyUser(order.patient.userId, {
+      title: 'Order cancelled',
+      message: `Your Cure Cafe order ${order.orderNumber} was cancelled. A ₹20 cancellation charge has been added to billing.`,
+      type: 'GENERAL',
+      metadata: { foodOrderId: id, orderNumber: order.orderNumber }
+    });
+  }
+
+  const fresh = await prisma.foodOrder.findUnique({ where: { id }, include: foodOrderInclude() });
+  res.json({ success: true, data: { order: hydrateFoodOrder(fresh) } });
+}));
+
+const feedbackSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+  body: z.object({
+    foodRating: z.number().int().min(1).max(5),
+    deliveryRating: z.number().int().min(1).max(5),
+    feedbackMessage: z.string().max(1000).optional().nullable(),
+    foodWarm: z.boolean(),
+    deliveredSafely: z.boolean(),
+    staffPolite: z.boolean()
+  })
+});
+
+router.post('/orders/:id/feedback', authorize(ROLES.PATIENT), validate(feedbackSchema), asyncHandler(async (req, res) => {
+  const { id } = req.validated.params;
+  const order = await prisma.foodOrder.findUnique({ where: { id }, include: foodOrderInclude() });
+  if (!order) throw new ApiError(404, 'Food order not found');
+  await assertOrderAccess(req, order);
+  if (order.status !== 'DELIVERED') throw new ApiError(400, 'Feedback can be submitted only after delivery');
+  if (order.feedbackSubmittedAt) throw new ApiError(409, 'Feedback already submitted for this order');
+
+  const updated = await prisma.foodOrder.update({
+    where: { id },
+    data: { ...req.validated.body, feedbackSubmittedAt: new Date() },
+    include: foodOrderInclude()
+  });
+
+  await notifyRole(ROLES.KITCHEN_STAFF, {
+    title: 'New food rating received',
+    message: `Order ${order.orderNumber} received ${req.validated.body.foodRating}/5 for food.`,
+    type: 'GENERAL',
+    metadata: { foodOrderId: id, foodRating: req.validated.body.foodRating }
+  });
+  await notifyRole(ROLES.DELIVERY_STAFF, {
+    title: 'New delivery rating received',
+    message: `Order ${order.orderNumber} received ${req.validated.body.deliveryRating}/5 for delivery.`,
+    type: 'GENERAL',
+    metadata: { foodOrderId: id, deliveryRating: req.validated.body.deliveryRating }
+  });
+
+  res.status(201).json({ success: true, data: { order: hydrateFoodOrder(updated) } });
+}));
+
 const statusSchema = z.object({
   params: z.object({ id: z.string().min(1) }),
   body: z.object({
     status: z.enum(FOOD_ORDER_STATUSES),
     note: z.string().max(500).optional(),
-    paymentReceived: z.boolean().optional().default(false)
+    paymentReceived: z.boolean().optional().default(false),
+    paymentMethod: z.enum(PAYMENT_METHODS).optional()
   })
 });
 
-function assertFoodOrderTransition(user, currentStatus, nextStatus, paymentReceived) {
+function assertFoodOrderTransition(user, currentStatus, nextStatus, paymentReceived, paymentMethod) {
   if (currentStatus === 'DELIVERED' || currentStatus === 'CANCELLED') throw new ApiError(409, `Order is already ${currentStatus}`);
   if (user.role === ROLES.ADMIN) return;
 
@@ -338,6 +425,7 @@ function assertFoodOrderTransition(user, currentStatus, nextStatus, paymentRecei
     const allowed = { READY_FOR_PICKUP: ['OUT_FOR_DELIVERY'], OUT_FOR_DELIVERY: ['DELIVERED'] };
     if (!allowed[currentStatus]?.includes(nextStatus)) throw new ApiError(403, `Delivery staff cannot change order from ${currentStatus} to ${nextStatus}`);
     if (nextStatus === 'DELIVERED' && !paymentReceived) throw new ApiError(400, 'Payment confirmation is required before marking this order delivered');
+    if (nextStatus === 'DELIVERED' && !paymentMethod) throw new ApiError(400, 'Payment method is required before marking this order delivered');
     return;
   }
 
@@ -346,13 +434,13 @@ function assertFoodOrderTransition(user, currentStatus, nextStatus, paymentRecei
 
 router.patch('/orders/:id/status', validate(statusSchema), asyncHandler(async (req, res) => {
   const { id } = req.validated.params;
-  const { status, note, paymentReceived } = req.validated.body;
+  const { status, note, paymentReceived, paymentMethod } = req.validated.body;
 
   const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.foodOrder.findUnique({ where: { id }, include: { patient: true, billingCharge: true } });
     if (!existing) throw new ApiError(404, 'Food order not found');
     if (existing.status === status) return existing;
-    assertFoodOrderTransition(req.user, existing.status, status, paymentReceived);
+    assertFoodOrderTransition(req.user, existing.status, status, paymentReceived, paymentMethod);
 
     const data = { status };
     if (status === 'ACCEPTED') data.acceptedAt = new Date();
@@ -366,6 +454,7 @@ router.patch('/orders/:id/status', validate(statusSchema), asyncHandler(async (r
       data.deliveredAt = new Date();
       data.deliveredById = req.user.id;
       data.paymentReceivedAt = paymentReceived ? new Date() : null;
+      data.paymentMethod = paymentMethod || 'CASH';
     }
 
     const updated = await tx.foodOrder.update({ where: { id }, data, include: foodOrderInclude() });
@@ -396,7 +485,7 @@ router.patch('/orders/:id/status', validate(statusSchema), asyncHandler(async (r
       PREPARING: 'Your Cure Cafe order is being prepared.',
       READY_FOR_PICKUP: 'Your Cure Cafe order is ready and waiting for delivery pickup.',
       OUT_FOR_DELIVERY: 'Your Cure Cafe order is out for delivery.',
-      DELIVERED: 'Your Cure Cafe order has been delivered and payment was received.',
+      DELIVERED: 'Your Cure Cafe order has been delivered and payment was received. Please open Orders and share food/delivery feedback.',
       CANCELLED: 'Your Cure Cafe order was cancelled.'
     };
     await notifyUser(patientUserId, {

@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bell, ClipboardCheck, CreditCard, LayoutDashboard, LogOut, Package, Pill, Salad, ShoppingBag, Truck, Users, Utensils, BarChart3, MessageSquare, UserCog } from 'lucide-react';
+import { Bell, ClipboardCheck, CreditCard, LayoutDashboard, LogOut, Package, Pill, ShoppingBag, UserRound, Users, Utensils, BarChart3, MessageSquare, UserCog } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
 import { api, useNotificationsQuery } from '../services/api';
 import { ROLES, roleLabel } from '../utils/format';
@@ -9,18 +9,15 @@ import BrandLogo from './BrandLogo';
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: Object.values(ROLES), end: true },
   { to: '/users', label: 'Users', icon: UserCog, roles: [ROLES.ADMIN] },
-  { to: '/patients', label: 'Patients', icon: Users, roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.KITCHEN_STAFF, ROLES.DELIVERY_STAFF, ROLES.PATIENT] },
-  { to: '/diets', label: 'Diets', icon: Pill, roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.PATIENT] },
-  { to: '/meals', label: 'Meals', icon: Utensils, roles: Object.values(ROLES) },
-  { to: '/menu', label: 'Menu', icon: ShoppingBag, roles: [ROLES.ADMIN, ROLES.KITCHEN_STAFF, ROLES.PATIENT] },
-  { to: '/orders', label: 'Orders', icon: ClipboardCheck, roles: [ROLES.ADMIN, ROLES.KITCHEN_STAFF, ROLES.DELIVERY_STAFF, ROLES.PATIENT, ROLES.DIETICIAN] },
-  { to: '/kitchen', label: 'Kitchen', icon: Salad, roles: [ROLES.ADMIN, ROLES.DIETICIAN, ROLES.KITCHEN_STAFF] },
-  { to: '/deliveries', label: 'Deliveries', icon: Truck, roles: [ROLES.ADMIN, ROLES.DELIVERY_STAFF, ROLES.KITCHEN_STAFF] },
-  { to: '/inventory', label: 'Inventory', icon: Package, roles: [ROLES.ADMIN, ROLES.DIETICIAN, ROLES.KITCHEN_STAFF] },
-  { to: '/billing', label: 'Billing', icon: CreditCard, roles: [ROLES.ADMIN, ROLES.DIETICIAN, ROLES.PATIENT] },
-  { to: '/reports', label: 'Reports', icon: BarChart3, roles: [ROLES.ADMIN, ROLES.DIETICIAN, ROLES.KITCHEN_STAFF] },
-  { to: '/feedback', label: 'Feedback', icon: MessageSquare, roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.KITCHEN_STAFF, ROLES.PATIENT] },
-  { to: '/notifications', label: 'Notifications', icon: Bell, roles: Object.values(ROLES) }
+  { to: '/patients', label: 'Patients', icon: Users, roles: [ROLES.DOCTOR, ROLES.DIETICIAN] },
+  { to: '/diets', label: 'Diets', icon: Pill, roles: [ROLES.DOCTOR, ROLES.DIETICIAN] },
+  { to: '/menu', label: 'Menu', icon: ShoppingBag, roles: [ROLES.KITCHEN_STAFF, ROLES.PATIENT] },
+  { to: '/orders', label: 'Orders', icon: ClipboardCheck, roles: [ROLES.KITCHEN_STAFF, ROLES.DELIVERY_STAFF, ROLES.PATIENT] },
+  { to: '/inventory', label: 'Inventory', icon: Package, roles: [ROLES.KITCHEN_STAFF] },
+  { to: '/billing', label: 'Billing', icon: CreditCard, roles: [ROLES.PATIENT] },
+  { to: '/queries', label: 'Queries', icon: MessageSquare, roles: [ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.PATIENT] },
+  { to: '/notifications', label: 'Notifications', icon: Bell, roles: Object.values(ROLES) },
+  { to: '/profile', label: 'Profile', icon: UserRound, roles: [ROLES.DOCTOR, ROLES.DIETICIAN, ROLES.PATIENT] }
 ];
 
 export default function Layout() {

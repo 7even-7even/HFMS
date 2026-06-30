@@ -52,6 +52,14 @@ router.post('/', authorize(ROLES.ADMIN), validate(createSchema), asyncHandler(as
   res.status(201).json({ success: true, data: { notification: hydrateNotification(notification) } });
 }));
 
+router.patch('/read-all', asyncHandler(async (req, res) => {
+  const where = req.user.role === ROLES.ADMIN
+    ? { readAt: null }
+    : { readAt: null, OR: [{ userId: req.user.id }, { roleTarget: req.user.role }] };
+  const result = await prisma.notification.updateMany({ where, data: { readAt: new Date() } });
+  res.json({ success: true, message: 'Notifications marked as read', data: { count: result.count } });
+}));
+
 router.patch('/:id/read', asyncHandler(async (req, res) => {
   const notification = await prisma.notification.findUnique({ where: { id: req.params.id } });
   if (!notification) throw new ApiError(404, 'Notification not found');
