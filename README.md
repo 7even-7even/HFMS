@@ -1,6 +1,6 @@
 # Cure Cafe
 
-Cure Cafe is a production-ready MVP for hospital nutrition operations. It manages admitted patient diets, doctor prescriptions, dietician approvals, kitchen preparation, patient menu ordering, ward-wise meal distribution, delivery tracking, inventory, billing, notifications, analytics and patient feedback.
+Cure Cafe is a platform for hospital nutrition operations. It manages admitted patient diets, doctor prescriptions, dietician approvals, kitchen preparation, patient menu ordering, ward-wise meal distribution, delivery tracking, inventory, billing, notifications, analytics and patient feedback.
 
 The project uses **PostgreSQL + Prisma** and now includes **email-verified registration**.
 
