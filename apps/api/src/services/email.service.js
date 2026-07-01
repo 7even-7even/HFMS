@@ -1,5 +1,10 @@
+const dns = require('dns');
 const nodemailer = require('nodemailer');
 const { env } = require('../config/env');
+
+// Some PaaS environments resolve smtp.gmail.com to IPv6 first but do not provide
+// outbound IPv6 routing. Prefer IPv4 globally for SMTP/DNS resolution.
+dns.setDefaultResultOrder?.('ipv4first');
 
 function hasSmtpConfig() {
   return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
@@ -10,9 +15,17 @@ function createTransporter() {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     secure: env.SMTP_SECURE,
+    family: 4,
+    requireTLS: !env.SMTP_SECURE,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS
+    },
+    tls: {
+      servername: env.SMTP_HOST
     }
   });
 }
