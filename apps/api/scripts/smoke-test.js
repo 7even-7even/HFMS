@@ -19,7 +19,7 @@ async function main() {
     await request(base, '/health');
     const login = await request(base, '/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'devloper7even@gmail.com', password: 'Password7' })
+      body: JSON.stringify({ email: 'admin@curecafe.test', password: 'Admin@1234' })
     });
     const token = login.data.accessToken;
     const auth = { Authorization: `Bearer ${token}` };

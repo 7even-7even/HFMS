@@ -29,15 +29,9 @@ services:
         value: uploads
       - key: EMAIL_VERIFICATION_TTL_MINUTES
         value: 60
-      - key: SMTP_HOST
+      - key: BREVO_API_KEY
         sync: false
-      - key: SMTP_PORT
-        value: 587
-      - key: SMTP_SECURE
-        value: "false"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
-        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Cure Cafe
+      - key: EMAIL_FROM_EMAIL
+        value: devloper7even@gmail.com

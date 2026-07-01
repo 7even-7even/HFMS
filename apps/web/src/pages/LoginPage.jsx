@@ -7,6 +7,15 @@ import { setCredentials } from '../features/auth/authSlice';
 import { apiError } from '../utils/format';
 import BrandLogo from '../components/BrandLogo';
 
+const demoLogins = [
+  ['Admin', 'admin@curecafe.test'],
+  ['Doctor', 'doctor@curecafe.test'],
+  ['Dietician', 'dietician@curecafe.test'],
+  ['Kitchen', 'kitchen@curecafe.test'],
+  ['Delivery', 'delivery@curecafe.test'],
+  ['Patient', 'patient@curecafe.test']
+];
+
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -15,22 +24,30 @@ export default function LoginPage() {
   const [login, { isLoading, error }] = useLoginMutation();
   const [resendVerification, resendState] = useResendVerificationMutation();
   const [resendMessage, setResendMessage] = useState('');
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: 'admin@curecafe.test', password: 'Admin@1234' });
 
   if (token) return <Navigate to={location.state?.from?.pathname || '/'} replace />;
 
   async function submit(e) {
     e.preventDefault();
     setResendMessage('');
-    const result = await login(form).unwrap();
-    dispatch(setCredentials(result.data));
-    navigate(location.state?.from?.pathname || '/');
+    try {
+      const result = await login(form).unwrap();
+      dispatch(setCredentials(result.data));
+      navigate(location.state?.from?.pathname || '/');
+    } catch {
+      // RTK Query exposes the error through the mutation state for inline rendering.
+    }
   }
 
   async function resend() {
     setResendMessage('');
-    const response = await resendVerification({ email: form.email }).unwrap();
-    setResendMessage(response.message || 'Verification email sent.');
+    try {
+      const response = await resendVerification({ email: form.email }).unwrap();
+      setResendMessage(response.message || 'Verification email sent.');
+    } catch {
+      // RTK Query exposes the error through mutation state.
+    }
   }
 
   const verificationRequired = error?.data?.details?.code === 'EMAIL_VERIFICATION_REQUIRED' || /verification/i.test(error?.data?.message || '');
@@ -91,7 +108,22 @@ export default function LoginPage() {
             )}
             <button className="btn-primary w-full" disabled={isLoading}>{isLoading ? 'Signing in...' : 'Login to Cure Cafe'}</button>
           </form>
-          <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-4 text-sm text-slate-600">
+          <div className="mt-6 rounded-[1.5rem] bg-emerald-50/70 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-700">Demo quick fill</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {demoLogins.map(([label, email]) => (
+                <button
+                  key={email}
+                  type="button"
+                  onClick={() => setForm({ email, password: 'Admin@1234' })}
+                  className="rounded-2xl border border-emerald-100 bg-white px-3 py-2 text-left text-sm font-black text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 rounded-[1.5rem] bg-slate-50 p-4 text-sm text-slate-600">
             <p className="flex items-center gap-2 font-bold text-slate-800"><HeartPulse size={16} /> New patient account?</p>
             <p className="mt-1">Create an account and verify your email before signing in.</p>
             <Link to="/register" className="btn-secondary mt-4 w-full">Create patient account</Link>

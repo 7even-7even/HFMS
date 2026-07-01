@@ -7,7 +7,7 @@ This document explains the full Cure Cafe workspace structure and the purpose of
 ## High-Level Workspace Tree
 
 ```text
-Cure Cafe/
+hfms/
   .env.example
   .gitignore
   README.md
@@ -127,7 +127,7 @@ Cure Cafe/
 
 ## `.env.example`
 
-Root reference environment file. It documents the main environment variables used by the API, including PostgreSQL connection string, JWT secrets, CORS, app URL and SMTP settings. The actual runtime environment for the backend is `apps/api/.env`.
+Root reference environment file. It documents the main environment variables used by the API, including PostgreSQL connection string, JWT secrets, CORS, app URL and HTTP email settings. The actual runtime environment for the backend is `apps/api/.env`.
 
 ## `.gitignore`
 
@@ -142,7 +142,7 @@ Defines files and folders that should not be committed, such as:
 
 ## `README.md`
 
-Main project documentation. It explains architecture, setup, PostgreSQL installation options, API endpoints, seeded credentials, RBAC, SMTP email verification and deployment notes.
+Main project documentation. It explains architecture, setup, PostgreSQL installation options, API endpoints, seeded credentials, RBAC, HTTP email verification and deployment notes.
 
 ## `Breakdown.md`
 
@@ -194,7 +194,7 @@ The backend is a Node.js + Express.js REST API using Prisma and PostgreSQL.
 
 ## `apps/api/.env`
 
-Local backend environment variables. Contains development database URL, JWT secrets, app URL, CORS origin and SMTP values.
+Local backend environment variables. Contains development database URL, JWT secrets, app URL, CORS origin and HTTP email values.
 
 Important: in a real production repo, do not commit real secrets.
 
@@ -282,8 +282,8 @@ The seed is idempotent by default. If demo data exists, it skips. Use `db:reset`
 Seeded admin:
 
 ```txt
-Email: devloper7even@gmail.com
-Password: Password7
+Email: admin@curecafe.test
+Password: Admin@1234
 Name: Admin
 ```
 
@@ -371,7 +371,7 @@ Includes:
 - upload directory
 - app URL
 - email verification TTL
-- SMTP config
+- HTTP email provider config
 
 ### `prisma.js`
 
@@ -430,15 +430,15 @@ Invalid requests return HTTP 400.
 
 ### `email.service.js`
 
-SMTP/Nodemailer email service.
+Brevo HTTP email service.
 
 Used for account verification emails.
 
 Behavior:
 
-- In development without SMTP, logs the verification link to the API console.
-- In production without SMTP, fails safely.
-- Sends formal verification emails when SMTP is configured.
+- In development without BREVO_API_KEY, logs the verification link to the API console.
+- In production without BREVO_API_KEY, fails safely.
+- Sends formal verification emails through the Brevo HTTP API when BREVO_API_KEY is configured.
 
 ### `notification.service.js`
 
@@ -897,7 +897,7 @@ Public login page.
 
 Important behavior:
 
-- no demo credentials are displayed
+- demo quick-fill buttons are displayed for seeded demo users
 - verified users can login
 - unverified users can request another verification email
 - links to patient registration

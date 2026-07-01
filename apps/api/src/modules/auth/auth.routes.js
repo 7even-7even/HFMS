@@ -11,7 +11,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 const { ApiError } = require('../../utils/apiError');
 const { ROLES } = require('../../constants');
 const { hydratePatient } = require('../../utils/json');
-const { sendVerificationEmail, hasSmtpConfig } = require('../../services/email.service');
+const { sendVerificationEmail, hasEmailConfig } = require('../../services/email.service');
 
 const router = express.Router();
 
@@ -38,9 +38,16 @@ function verificationUrl(token) {
 }
 
 function assertEmailDeliveryAvailable() {
-  if (env.NODE_ENV === 'production' && !hasSmtpConfig()) {
+  if (env.NODE_ENV === 'production' && !hasEmailConfig()) {
     throw new ApiError(503, 'Email verification service is not configured. Please contact the administrator.');
   }
+}
+
+function emailDeliveryError(error) {
+  console.error('Verification email delivery failed:', error);
+  return new ApiError(503, 'Email verification is required, but the verification email could not be sent right now. Please try again in a few minutes or contact support.', {
+    code: 'EMAIL_SEND_FAILED'
+  });
 }
 
 async function issueVerificationEmail(user) {
@@ -80,8 +87,30 @@ const registerSchema = z.object({
 router.post('/register', validate(registerSchema), asyncHandler(async (req, res) => {
   assertEmailDeliveryAvailable();
   const { name, email, phone, password } = req.validated.body;
-  const passwordHash = await bcrypt.hash(password, 12);
 
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing?.emailVerifiedAt) {
+    throw new ApiError(409, 'An account with this email already exists. Please login instead.');
+  }
+
+  if (existing && !existing.emailVerifiedAt) {
+    let verification;
+    try {
+      verification = await issueVerificationEmail(existing);
+    } catch (error) {
+      throw emailDeliveryError(error);
+    }
+    return res.json({
+      success: true,
+      message: 'An unverified account already exists for this email. A fresh verification email has been sent.',
+      data: {
+        user: sanitizeUser(existing),
+        ...(env.NODE_ENV !== 'production' && verification.mail.preview ? { devVerificationLink: verification.link } : {})
+      }
+    });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
     data: {
       name,
@@ -94,7 +123,12 @@ router.post('/register', validate(registerSchema), asyncHandler(async (req, res)
     }
   });
 
-  const verification = await issueVerificationEmail(user);
+  let verification;
+  try {
+    verification = await issueVerificationEmail(user);
+  } catch (error) {
+    throw emailDeliveryError(error);
+  }
 
   res.status(201).json({
     success: true,
@@ -152,7 +186,12 @@ router.post('/resend-verification', validate(resendVerificationSchema), asyncHan
     return res.json({ success: true, message: 'This email is already verified. Please login.' });
   }
 
-  const verification = await issueVerificationEmail(user);
+  let verification;
+  try {
+    verification = await issueVerificationEmail(user);
+  } catch (error) {
+    throw emailDeliveryError(error);
+  }
   res.json({
     success: true,
     message: 'Verification email sent. Please check your inbox.',
@@ -182,7 +221,12 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
   if (!ok) throw new ApiError(401, 'Invalid email or password');
 
   if (!user.emailVerifiedAt) {
-    const verification = await issueVerificationEmail(user);
+    let verification;
+    try {
+      verification = await issueVerificationEmail(user);
+    } catch (error) {
+      throw emailDeliveryError(error);
+    }
     throw new ApiError(403, 'Email verification required. A fresh verification email has been sent to your registered email address.', {
       code: 'EMAIL_VERIFICATION_REQUIRED',
       ...(env.NODE_ENV !== 'production' && verification.mail.preview ? { devVerificationLink: verification.link } : {})

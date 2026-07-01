@@ -1,58 +1,60 @@
-const dns = require('dns');
-const nodemailer = require('nodemailer');
 const { env } = require('../config/env');
 
-// Some PaaS environments resolve smtp.gmail.com to IPv6 first but do not provide
-// outbound IPv6 routing. Prefer IPv4 globally for SMTP/DNS resolution.
-dns.setDefaultResultOrder?.('ipv4first');
-
-function hasSmtpConfig() {
-  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+function hasEmailConfig() {
+  return Boolean(env.BREVO_API_KEY && env.EMAIL_FROM_EMAIL);
 }
 
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    family: 4,
-    requireTLS: !env.SMTP_SECURE,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-    auth: {
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS
+function formatBrevoError(status, payload) {
+  if (!payload) return `Brevo API failed with status ${status}`;
+  if (typeof payload === 'string') return `Brevo API failed with status ${status}: ${payload}`;
+  return `Brevo API failed with status ${status}: ${payload.message || payload.error || payload.code || JSON.stringify(payload)}`;
+}
+
+async function sendViaBrevo({ to, subject, html, text }) {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': env.BREVO_API_KEY,
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
     },
-    tls: {
-      servername: env.SMTP_HOST
-    }
+    body: JSON.stringify({
+      sender: {
+        name: env.EMAIL_FROM_NAME,
+        email: env.EMAIL_FROM_EMAIL
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text
+    }),
+    signal: AbortSignal.timeout(30000)
   });
+
+  const payload = await response.json().catch(async () => response.text().catch(() => null));
+
+  if (!response.ok) {
+    throw new Error(formatBrevoError(response.status, payload));
+  }
+
+  return { sent: true, provider: 'brevo', messageId: payload?.messageId };
 }
 
 async function sendMail({ to, subject, html, text }) {
-  if (!hasSmtpConfig()) {
+  if (!hasEmailConfig()) {
     if (env.NODE_ENV === 'production') {
-      throw new Error('SMTP is not configured. Email verification cannot be sent in production.');
+      throw new Error('HTTP email provider is not configured. Set BREVO_API_KEY and EMAIL_FROM_EMAIL in production.');
     }
-    console.info('\n[email preview: SMTP not configured]');
+
+    console.info('\n[email preview: BREVO_API_KEY not configured]');
     console.info(`To: ${to}`);
     console.info(`Subject: ${subject}`);
     console.info(text);
     console.info('[/email preview]\n');
-    return { sent: false, preview: true };
+    return { sent: false, preview: true, provider: 'console' };
   }
 
-  const transporter = createTransporter();
-  const info = await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to,
-    subject,
-    html,
-    text
-  });
-
-  return { sent: true, messageId: info.messageId };
+  return sendViaBrevo({ to, subject, html, text });
 }
 
 async function sendVerificationEmail({ user, verificationLink, expiresMinutes }) {
@@ -95,4 +97,4 @@ async function sendVerificationEmail({ user, verificationLink, expiresMinutes })
   return sendMail({ to: user.email, subject, html, text });
 }
 
-module.exports = { sendMail, sendVerificationEmail, hasSmtpConfig };
+module.exports = { sendMail, sendVerificationEmail, hasEmailConfig };

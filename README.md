@@ -20,7 +20,7 @@ Node.js + Express.js API
   - Zod request validation
   - centralized exception handling
   - isolated business modules
-  - SMTP email adapter
+  - HTTP email adapter
   - notification adapter service
   - file upload service
           |
@@ -62,7 +62,7 @@ PostgreSQL
 - Prisma ORM
 - PostgreSQL
 - JWT auth + refresh token rotation
-- Email verification using SMTP/Nodemailer
+- Email verification using Brevo HTTP API
 - RBAC middleware
 - Zod validation
 - Multer file uploads
@@ -149,24 +149,21 @@ Cure Cafe supports verified registration:
 - `POST /auth/logout`
 - `GET /auth/me`
 
-### SMTP environment variables
+### HTTP email environment variables
 
-For real email delivery, configure these in `apps/api/.env` or your deployment platform:
+Cure Cafe now uses the Brevo HTTP Email API instead of SMTP. Configure these in `apps/api/.env` or your deployment platform:
 
 ```env
 APP_URL="http://localhost:5173"
 EMAIL_VERIFICATION_TTL_MINUTES=60
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-gmail-app-password"
-SMTP_FROM="Cure Cafe <your-email@gmail.com>"
+BREVO_API_KEY="xkeysib-your-brevo-api-key"
+EMAIL_FROM_NAME="Cure Cafe"
+EMAIL_FROM_EMAIL="devloper7even@gmail.com"
 ```
 
-In local development, if SMTP is empty, Cure Cafe logs the verification link to the API console and also returns a dev-only verification link. In production, SMTP must be configured or email verification will fail safely.
+In local development, if `BREVO_API_KEY` is empty, Cure Cafe logs the verification link to the API console and also returns a dev-only verification link. In production, `BREVO_API_KEY` must be configured or email verification will fail safely.
 
-> For Gmail, use a Gmail App Password, not your normal Gmail password.
+> In Brevo, verify `devloper7even@gmail.com` as a sender first. You do not need to buy a domain for this demo path.
 
 ---
 
@@ -449,11 +446,11 @@ npm run smoke:test
 
 ## 9. Seeded Credentials
 
-The login page intentionally does **not** display demo credentials.
+Because this is a demo project, the login page includes quick-fill buttons for these seeded credentials.
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | `devloper7even@gmail.com` | `Password7` |
+| Admin | `admin@curecafe.test` | `Admin@1234` |
 | Doctor | `doctor@curecafe.test` | `Admin@1234` |
 | Dietician | `dietician@curecafe.test` | `Admin@1234` |
 | Kitchen Staff | `kitchen@curecafe.test` | `Admin@1234` |
@@ -477,9 +474,15 @@ All seeded accounts are already email-verified for testing.
 
 ## 11. Deployment Notes
 
-`render.yaml` is configured for a one-service deployment with a PostgreSQL database.
+The app is deployment-ready as a single Node web service. In production, the Express API serves the React build from `apps/web/dist`.
 
-The API serves the React production build when `NODE_ENV=production`, so Cure Cafe can run as one web service.
+Recommended free demo stack:
+
+```txt
+Render Free Web Service + Neon Free PostgreSQL + Brevo HTTP Email
+```
+
+`render.yaml` is configured for a one-service Render deployment. It expects you to provide `DATABASE_URL`, `APP_URL`, and HTTP email values in the Render dashboard.
 
 Render build command:
 
@@ -493,17 +496,17 @@ Render start command:
 npm run start -w apps/api
 ```
 
-Before enabling public registration in production, configure:
+Required production environment variables:
 
 ```env
-APP_URL="https://your-deployed-domain.com"
-SMTP_HOST="your-smtp-host"
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER="your-smtp-user"
-SMTP_PASS="your-smtp-password"
-SMTP_FROM="Cure Cafe <your-from-email>"
+DATABASE_URL="postgresql://...your-neon-connection-string...?sslmode=require"
+APP_URL="https://your-render-service.onrender.com"
+BREVO_API_KEY="xkeysib-your-brevo-api-key"
+EMAIL_FROM_NAME="Cure Cafe"
+EMAIL_FROM_EMAIL="devloper7even@gmail.com"
 ```
+
+For this no-domain demo path, verify `devloper7even@gmail.com` as a sender in Brevo before testing public Gmail recipients.
 
 For production, use a managed PostgreSQL database with backups. Do not use local uploads for important patient documents; replace local storage with S3/GCS or another object storage provider.
 
@@ -515,6 +518,6 @@ For production, use a managed PostgreSQL database with backups. Do not use local
 - `db:seed` is safe/idempotent: it skips seeding if demo data already exists.
 - `db:reset` will wipe and recreate demo data.
 - Public registration requires email verification before login.
-- In production, SMTP must be configured for registration/verification emails.
+- In production, BREVO_API_KEY must be configured for registration/verification emails.
 - SMS notifications are adapter stubs in the MVP. In-app notifications are persisted and functional.
 - Local uploads are saved in `apps/api/uploads`; production should use object storage.

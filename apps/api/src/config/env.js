@@ -4,8 +4,6 @@ const { z } = require('zod');
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const booleanString = z.enum(['true', 'false']).transform((value) => value === 'true');
-
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -18,12 +16,9 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   APP_URL: z.string().url().default('http://localhost:5173'),
   EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().positive().default(60),
-  SMTP_HOST: z.string().optional().default(''),
-  SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_SECURE: booleanString.default('false'),
-  SMTP_USER: z.string().optional().default(''),
-  SMTP_PASS: z.string().optional().default(''),
-  SMTP_FROM: z.string().default('Cure Cafe <no-reply@curecafe.local>')
+  BREVO_API_KEY: z.string().optional().default(''),
+  EMAIL_FROM_NAME: z.string().default('Cure Cafe'),
+  EMAIL_FROM_EMAIL: z.string().email().default('devloper7even@gmail.com')
 });
 
 const env = envSchema.parse(process.env);

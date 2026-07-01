@@ -35,27 +35,33 @@ async function reset() {
 
 async function main() {
   const shouldReset = process.argv.includes('--reset') || process.env.SEED_RESET === 'true';
+  const demoPasswordHash = await bcrypt.hash('Admin@1234', 12);
+
   if (shouldReset) {
     await reset();
   } else {
-    const existingAdmin = await prisma.user.findUnique({ where: { email: 'devloper7even@gmail.com' } });
+    const existingAdmin = await prisma.user.findUnique({ where: { email: 'admin@curecafe.test' } });
     if (existingAdmin) {
-      console.log('Cure Cafe seed skipped: demo data already exists. Use `npm run db:reset -w apps/api` to reset it.');
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { name: 'Admin', passwordHash: demoPasswordHash, role: 'ADMIN', isActive: true, emailVerifiedAt: existingAdmin.emailVerifiedAt || new Date() }
+      });
+      console.log('Cure Cafe seed skipped: demo data already exists. Admin credentials refreshed.');
       return;
     }
 
     const existingUsers = await prisma.user.count();
     if (existingUsers > 0) {
-      console.log('Cure Cafe seed found existing users with a different seed set. Use `npm run db:reset -w apps/api` to recreate demo data with the latest admin credentials.');
+      await prisma.user.create({
+        data: { name: 'Admin', email: 'admin@curecafe.test', role: 'ADMIN', phone: '+919000000001', passwordHash: demoPasswordHash, emailVerifiedAt: new Date(), isActive: true }
+      });
+      console.log('Cure Cafe seed found existing data and created missing admin@curecafe.test / Admin@1234 account.');
       return;
     }
   }
-
-  const adminPasswordHash = await bcrypt.hash('Password7', 12);
-  const demoPasswordHash = await bcrypt.hash('Admin@1234', 12);
   const users = {};
   for (const user of [
-    { key: 'admin', name: 'Admin', email: 'devloper7even@gmail.com', role: 'ADMIN', phone: '+919000000001', passwordHash: adminPasswordHash },
+    { key: 'admin', name: 'Admin', email: 'admin@curecafe.test', role: 'ADMIN', phone: '+919000000001', passwordHash: demoPasswordHash },
     { key: 'doctor', name: 'Dr. Meera Rao', email: 'doctor@curecafe.test', role: 'DOCTOR', phone: '+919000000002', passwordHash: demoPasswordHash },
     { key: 'dietician', name: 'Anika Dietician', email: 'dietician@curecafe.test', role: 'DIETICIAN', phone: '+919000000003', passwordHash: demoPasswordHash },
     { key: 'kitchen', name: 'Kabir Kitchen', email: 'kitchen@curecafe.test', role: 'KITCHEN_STAFF', phone: '+919000000004', passwordHash: demoPasswordHash },
@@ -329,7 +335,7 @@ async function main() {
 
   console.log('Cure Cafe seed complete. Demo credentials:');
   console.table([
-    ['Admin', 'devloper7even@gmail.com', 'Password7'],
+    ['Admin', 'admin@curecafe.test', 'Admin@1234'],
     ['Doctor', 'doctor@curecafe.test', 'Admin@1234'],
     ['Dietician', 'dietician@curecafe.test', 'Admin@1234'],
     ['Kitchen Staff', 'kitchen@curecafe.test', 'Admin@1234'],

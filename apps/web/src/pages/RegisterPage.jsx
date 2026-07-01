@@ -12,8 +12,12 @@ export default function RegisterPage() {
 
   async function submit(e) {
     e.preventDefault();
-    const response = await register(form).unwrap();
-    setResult(response);
+    try {
+      const response = await register(form).unwrap();
+      setResult(response);
+    } catch {
+      // RTK Query exposes the error through state.error for inline rendering.
+    }
   }
 
   return (
