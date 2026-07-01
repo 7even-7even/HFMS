@@ -1,9 +1,3 @@
-databases:
-  - name: cure-cafe-db
-    databaseName: cure_cafe
-    user: cure_cafe
-    plan: free
-
 services:
   - type: web
     name: cure-cafe
@@ -18,9 +12,11 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        fromDatabase:
-          name: cure-cafe-db
-          property: connectionString
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
       - key: ACCESS_TOKEN_TTL
         value: 15m
       - key: REFRESH_TOKEN_TTL
@@ -28,24 +24,20 @@ services:
       - key: CORS_ORIGIN
         value: "*"
       - key: APP_URL
-        value: https://cure-cafe.onrender.com
+        sync: false
       - key: UPLOAD_DIR
         value: uploads
       - key: EMAIL_VERIFICATION_TTL_MINUTES
         value: 60
       - key: SMTP_HOST
-        value: ""
+        sync: false
       - key: SMTP_PORT
         value: 587
       - key: SMTP_SECURE
         value: "false"
       - key: SMTP_USER
-        value: ""
+        sync: false
       - key: SMTP_PASS
-        value: ""
+        sync: false
       - key: SMTP_FROM
-        value: "Cure Cafe <no-reply@curecafe.local>"
-      - key: JWT_ACCESS_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
+        sync: false

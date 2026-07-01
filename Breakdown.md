@@ -7,7 +7,7 @@ This document explains the full Cure Cafe workspace structure and the purpose of
 ## High-Level Workspace Tree
 
 ```text
-hfms/
+Cure Cafe/
   .env.example
   .gitignore
   README.md
